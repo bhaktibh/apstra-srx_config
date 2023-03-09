@@ -1,0 +1,23 @@
+routing-instances {
+{% for key,rt_inst in rt_instances.items() if key != "default" %}
+    {{key}} {
+        instance-type vrf;
+        routing-options {
+            auto-export;
+        }
+        protocols {
+            evpn {
+                ip-prefix-routes {
+                    advertise direct-nexthop;
+                    encapsulation vxlan;
+                    vni {{rt_inst['vni_id']}};
+                    export vrf-export-to-{{key}};
+                }
+            }
+        }
+        route-distinguisher {{local_addr}}:{{rt_inst['vlan_id']}};
+        vrf-import vrf-import-to-{{key}};
+        vrf-export vrf-export-to-{{key}};
+    }
+{% endfor %}
+}

@@ -1,0 +1,21 @@
+protocols {
+    bgp {
+        group underlay_{{ spine }} {
+            type external;
+            multihop;
+            advertise-peer-as;
+            multipath;
+            neighbor {{neighbor}} {
+                local-address {{local_addr}};
+                family inet {
+                    unicast;
+                }
+                family evpn {
+                    signaling;
+                }
+                peer-as {{peer_as}};
+                local-as {{local_as}};
+            }
+        }
+    }
+}

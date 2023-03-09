@@ -1,0 +1,31 @@
+policy-options {
+{% for key,rt_inst in rt_instances.items() if key != "default" %}
+    policy-statement vrf-export-to-{{key}} {
+        term 1 {
+            then {
+                community add {{key}};
+                accept;
+            }
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-import-to-{{key}} {
+        term 1 {
+            from community {{key}};
+            then accept;
+        }
+        term 100 {
+            then reject;
+        }
+    }
+{% endfor %}
+{% for key,rt_inst in rt_instances.items() if key != "default" %}
+{% if rt_inst['vni_id'] <= 65535 %}
+    community {{key}} members target:{{rt_inst['vni_id']}}:1;
+{% else %}
+    community {{key}} members target:{{rt_inst['vni_id']}}L:1;
+{% endif %}
+{% endfor %}
+}
