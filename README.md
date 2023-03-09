@@ -6,7 +6,7 @@ This script will be useful to generate SRX base config (using the jinja2 files p
 After cloning this report, from the same directory run **pip3 install -r requirements.txt**
 
 ## Pre-requisite:
-1. Ensure you have fabric provisioned on Apstra and is connected SRX. **Note: The SRX should be connected to the Spine devices as per the design, contact Ben Griffin for more information on the Network Design**
+1. Ensure you have fabric provisioned on Apstra and is connected SRX. **Note: The SRX should be connected to the Spine devices as per the design, contact "MUST Team @ crdc-must@juniper.net" for more information on the Network Design**
 2. Note that the script requires valid Apstra IP, port (if different to 443), username (if different to admin), password and blueprint name where SRX is connected.
 3. For now the script will identify SRX connected to spine devices using the Apstra Spine Device-context -> BGPSessions and filtering the sessions based on description as 'srx'. Ensure that the SRX device is added as generic device with name starting as srx. (this is expected to change in future if user wants to input the SRX device name as in defined in Apstra)
 
