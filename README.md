@@ -2,7 +2,7 @@
 The python script "build_apstra_srx_config.py" is an interactive script that gathers input from user and validates each input. This script can be executed in any python3 environment, preferrably python3.7 and above. It has been tested on MACOS python 3.7 and 3.9
 This script will be useful to generate SRX base config (using the jinja2 files provided with this repository) which is connected to Spine Devices . Name of file is of format srx_config_(srx_loopback_ip).txt
 
-## Installing pyton modules
+## Installing python modules
 After cloning this report, from the same directory run **pip3 install -r requirements.txt**
 
 ## Pre-requisite:
