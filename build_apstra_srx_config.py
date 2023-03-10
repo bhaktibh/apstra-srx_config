@@ -134,6 +134,7 @@ if __name__ == "__main__":
     node_id=''
     
     srx_bgp = []
+    srx_bgp_session = []
     srx_lpbck_addr = []
     leaf_node_found = False
     #print(spine_nodes)
@@ -147,47 +148,55 @@ if __name__ == "__main__":
                 os.remove(filePath)
             except:
                 pass
-    
+    #srx_spine_map = []
     srx_count = 0
     spine_node = []
+    #srx_bgp_session = []
     if bp_nodes != []:
         for node in bp_nodes:
+            prev_spine=''
             if node[2] == 'spine':
                 # Getting spine device context
                 device_context = get_device_context(aos_url,token,bp_id,node[0])
                 context=[]
                 context=json.loads(device_context['context'])
                 bgp_sessions= context['bgp_sessions']
-                #print(bgp_sessions)
-                # we reset the srx_bgp and srx_count for next spine
-                #prev_srx = ''
-                srx_bgp = []
-                srx_count = 0
-                srx_bgp = [bgp for key,bgp in bgp_sessions.items() if 'srx' in bgp['description']]
-                srx_count = len(srx_bgp)
+                #srx_bgp_session = [bgp for key,bgp in bgp_sessions.items() if 'srx' in bgp['description'] bgp["spine"] = node[1]]
+                for key,bgp in bgp_sessions.items():
+                    if 'srx' in bgp['description']:
+                        bgp["spine"] = node[1]
+                        srx_bgp.append(bgp)
+                #srx_bgp.append(srx_bgp_session)
+                #srx_bgp["spine"]= 34
+                #print(srx_bgp)
                 spine_node.append(node[1])
+                srx_count = len(srx_bgp)
                 srx_lpbck_addr = [srx_bgp[i]['dest_ip'] for i in range(srx_count)]
-                if srx_count > 0:
-                    for i in range(len(srx_bgp)):
-                        protocol = Environment(loader=FileSystemLoader(THIS_DIR),
-                                  trim_blocks=True)
-                        bgp_config = protocol.get_template('protocols_bgp.j2').render(
-                             spine = node[1], neighbor=srx_bgp[i]['source_ip'], local_addr = srx_bgp[i]['dest_ip'], peer_as = srx_bgp[i]['source_asn'], local_as = srx_bgp[i]['dest_asn']
-                    )
-                        # if file already present then append
-                        if os.path.isfile("srx_config_" + srx_bgp[i]['dest_ip'] + ".txt"):
-                        #if prev_srx == srx_bgp[i]['dest_ip']:
-                            srx_filenm = open("srx_config_" + srx_bgp[i]['dest_ip'] + ".txt","a")
-                        else:
-                            print ("Adding protocols bgp to srx_config_"+ srx_bgp[i]['dest_ip']+ ".txt")
-                            srx_filenm = open("srx_config_" + srx_bgp[i]['dest_ip'] + ".txt","w")
-                            
-                        #Now write file for srx_config
-                        try:
-                            srx_filenm.write(bgp_config)
-                            srx_filenm.write('\n')
-                        except Exception as e:
-                            sys.exit("File " + "srx_config_" + srx_bgp[i]['dest_ip'] + ".txt write error. In case if file is open then close file.")
+                print (srx_lpbck_addr)
+        #removing duplicates
+        srx_lpbck_addr = set(srx_lpbck_addr)
+        srx_lpbck_addr = list(srx_lpbck_addr)
+        #if srx_count > 0:
+        #    for i in range(len(srx_bgp)): 
+        protocol = Environment(loader=FileSystemLoader(THIS_DIR),
+                      trim_blocks=True, lstrip_blocks=True)
+        bgp_config = protocol.get_template('protocols.j2').render(
+        #                 spine = node[1], srx_bgp = srx_bgp
+                         srx_bgp = srx_bgp
+        )
+        #Now write file for srx_config
+        for i in range(len(srx_lpbck_addr)):
+            if os.path.isfile("srx_config_" + srx_lpbck_addr[i] + ".txt"):
+                srx_filenm = open("srx_config_" + srx_lpbck_addr[i] + ".txt","a")
+            else:
+                print ("Adding protocols bgp to srx_config_"+ srx_lpbck_addr[i]+ ".txt")
+                srx_filenm = open("srx_config_" + srx_lpbck_addr[i] + ".txt","w")
+            try:
+                srx_filenm.write(bgp_config)
+                srx_filenm.write('\n')
+            except Exception as e:
+                sys.exit("File " + "srx_config_" + srx_lpbck_addr[i] + ".txt write error. In case if file is open then close file.")
+        prev_spine = node[2]
         node=''
         for node in bp_nodes:
             if node[2] == 'leaf':
@@ -206,13 +215,13 @@ if __name__ == "__main__":
             policy_op_config = protocol.get_template('policy-options.j2').render(
                       rt_instances = rt_instances
             )
-            lldp_config = protocol.get_template('protocols_lldp.j2').render()
+            #lldp_config = protocol.get_template('protocols_lldp.j2').render()
             #print (output)
             print ("Adding protocols lldp, routing_instances, policy_options to srx_config_"+ srx_bgp[i]['dest_ip']+ ".txt")
             srx_filenm = open("srx_config_" + srx_lpbck_addr[r] + ".txt","a")
             try:
-                srx_filenm.write('\n')
-                srx_filenm.write(lldp_config)
+                #srx_filenm.write('\n')
+                #srx_filenm.write(lldp_config)
                 srx_filenm.write('\n')
                 srx_filenm.write(rt_inst_config)
                 srx_filenm.write('\n')
