@@ -137,7 +137,7 @@ if __name__ == "__main__":
     srx_bgp_session = []
     srx_lpbck_addr = []
     leaf_node_found = False
-    #print(spine_nodes)
+
     #write config generated below to srx config file
     THIS_DIR = os.path.dirname(os.path.abspath(__file__))
     #srx_config_f = open("srx_config.txt", "w")
@@ -148,10 +148,8 @@ if __name__ == "__main__":
                 os.remove(filePath)
             except:
                 pass
-    #srx_spine_map = []
     srx_count = 0
     spine_node = []
-    #srx_bgp_session = []
     if bp_nodes != []:
         for node in bp_nodes:
             prev_spine=''
@@ -161,23 +159,18 @@ if __name__ == "__main__":
                 context=[]
                 context=json.loads(device_context['context'])
                 bgp_sessions= context['bgp_sessions']
-                #srx_bgp_session = [bgp for key,bgp in bgp_sessions.items() if 'srx' in bgp['description'] bgp["spine"] = node[1]]
+                # Get SRX BGP sessions from spine device context and collate it in srx_bgp from all spines
                 for key,bgp in bgp_sessions.items():
                     if 'srx' in bgp['description']:
                         bgp["spine"] = node[1]
                         srx_bgp.append(bgp)
-                #srx_bgp.append(srx_bgp_session)
-                #srx_bgp["spine"]= 34
-                #print(srx_bgp)
                 spine_node.append(node[1])
                 srx_count = len(srx_bgp)
                 srx_lpbck_addr = [srx_bgp[i]['dest_ip'] for i in range(srx_count)]
-                print (srx_lpbck_addr)
-        #removing duplicates
+        #removing duplicates 
         srx_lpbck_addr = set(srx_lpbck_addr)
         srx_lpbck_addr = list(srx_lpbck_addr)
-        #if srx_count > 0:
-        #    for i in range(len(srx_bgp)): 
+        #create protocols template from protocols jinja
         protocol = Environment(loader=FileSystemLoader(THIS_DIR),
                       trim_blocks=True, lstrip_blocks=True)
         bgp_config = protocol.get_template('protocols.j2').render(
