@@ -61,9 +61,6 @@ def get_device_context(aos_url,token,bp_id,node_id):
     #print (resp.json()['context'])
     
     device_context = resp.json()
-    #print(type(device_context))
-    #device_context_formatted = json.dumps(device_context, indent=2)
-    #print(type(device_context_formatted))
     return device_context
 
 if __name__ == "__main__":
@@ -123,7 +120,6 @@ if __name__ == "__main__":
         
     # Next get auth token by logging into Apstra
     token = apstra_auth_token(aos_url, aos_user, aos_password)
-    #print ("Token is ", token)
     # Next get blueprints and parse to get blueprint ID
     bp_id = get_blueprint_id(aos_url, token)
     print ("Blueprint found.")
@@ -140,8 +136,7 @@ if __name__ == "__main__":
 
     #write config generated below to srx config file
     THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-    #srx_config_f = open("srx_config.txt", "w")
-    fileList = glob.glob('srx_config_*.txt')
+    fileList = glob.glob('base_srx_config_*.txt')
     if fileList != []:
         for filePath in fileList:
             try:
@@ -177,18 +172,18 @@ if __name__ == "__main__":
         #                 spine = node[1], srx_bgp = srx_bgp
                          srx_bgp = srx_bgp
         )
-        #Now write file for srx_config
+        #Now write file for base_srx_config
         for i in range(len(srx_lpbck_addr)):
-            if os.path.isfile("srx_config_" + srx_lpbck_addr[i] + ".txt"):
-                srx_filenm = open("srx_config_" + srx_lpbck_addr[i] + ".txt","a")
+            if os.path.isfile("base_srx_config_" + srx_lpbck_addr[i] + ".txt"):
+                srx_filenm = open("base_srx_config_" + srx_lpbck_addr[i] + ".txt","a")
             else:
-                print ("Adding protocols bgp to srx_config_"+ srx_lpbck_addr[i]+ ".txt")
-                srx_filenm = open("srx_config_" + srx_lpbck_addr[i] + ".txt","w")
+                print ("Adding protocols bgp to base_srx_config_"+ srx_lpbck_addr[i]+ ".txt")
+                srx_filenm = open("base_srx_config_" + srx_lpbck_addr[i] + ".txt","w")
             try:
                 srx_filenm.write(bgp_config)
                 srx_filenm.write('\n')
             except Exception as e:
-                sys.exit("File " + "srx_config_" + srx_lpbck_addr[i] + ".txt write error. In case if file is open then close file.")
+                sys.exit("File " + "base_srx_config_" + srx_lpbck_addr[i] + ".txt write error. In case if file is open then close file.")
         prev_spine = node[2]
         node=''
         for node in bp_nodes:
@@ -210,20 +205,20 @@ if __name__ == "__main__":
             )
             #lldp_config = protocol.get_template('protocols_lldp.j2').render()
             #print (output)
-            print ("Adding protocols lldp, routing_instances, policy_options to srx_config_"+ srx_bgp[i]['dest_ip']+ ".txt")
-            srx_filenm = open("srx_config_" + srx_lpbck_addr[r] + ".txt","a")
+            print ("Adding protocols lldp, routing_instances, policy_options to base_srx_config_"+ srx_bgp[i]['dest_ip']+ ".txt")
+            srx_filenm = open("base_srx_config_" + srx_lpbck_addr[r] + ".txt","a")
             try:
                 #srx_filenm.write('\n')
                 #srx_filenm.write(lldp_config)
-                srx_filenm.write('\n')
+                #srx_filenm.write('\n')
                 srx_filenm.write(rt_inst_config)
                 srx_filenm.write('\n')
                 srx_filenm.write(policy_op_config)
                 srx_filenm.close()
             except Exception as e:
-                sys.exit("File " + "srx_config_" + srx_lpbck_addr[r] + ".txt write error. In case if file is open then close file.")
+                sys.exit("File " + "base_srx_config_" + srx_lpbck_addr[r] + ".txt write error. In case if file is open then close file.")
     #Lets check if the file got generated again and print message
-    fileList = glob.glob('srx_config_*.txt')
+    fileList = glob.glob('base_srx_config_*.txt')
     if fileList != []:
         for filePath in fileList:
             print ('SRX config file generated for', filePath)

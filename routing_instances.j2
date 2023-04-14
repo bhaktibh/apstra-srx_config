@@ -3,15 +3,19 @@ routing-instances {
     {{key}} {
         instance-type vrf;
         routing-options {
+            multipath;
             auto-export;
         }
         protocols {
             evpn {
+                interconnect {
+                    vrf-target target:{{rt_inst['vni_id']}}:1;
+                    route-distinguisher {{local_addr}}:{{rt_inst['vlan_id']}};
+                }
                 ip-prefix-routes {
                     advertise direct-nexthop;
                     encapsulation vxlan;
                     vni {{rt_inst['vni_id']}};
-                    export vrf-export-to-{{key}};
                 }
             }
         }

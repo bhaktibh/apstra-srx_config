@@ -1,0 +1,772 @@
+﻿﻿root@Sunnyvale# show | no-more 
+## Last changed: 2023-04-06 15:14:00 UTC
+version 22.4R1-S1.1;
+groups {
+    anti_virus_pattern {
+        security {
+            utm {
+                default-configuration {
+                    anti-virus {
+                        avira-engine {
+                            pattern-update {
+                                proxy-profile profile1;
+                                interval 100;
+                                start-time "2022-11-1.13:20:22 +0000";
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    any-permit {
+        security {
+            policies {
+                from-zone <*> to-zone <*> {
+                    policy <*> {
+                        match {
+                            source-address any;
+                            destination-address any;
+                            application any;
+                        }
+                        then {
+                            permit;
+                            log {
+                                session-close;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+system {
+    host-name Sunnyvale;
+    root-authentication {
+        encrypted-password "$6$8Vo68J8/$wS5h0H4JonY3voP7KBr/DTNa1AuJ1KKh3zfFAHL8x1tMaASAzuQmPMefFdl0c0yBNoUPxo6/oY2hvCJIkO8hd0"; ## SECRET-DATA
+    }
+    login {
+        user fwadmin {
+            full-name fwadmin;
+            uid 200;
+            class super-user;
+            authentication {
+                encrypted-password "$6$uWIXrq7u$6MXPRwrpsYN.Yq7VDGFTbGJPAfnywm2h/a75plp6ovy9gclmu1xBtSo.JBDRhlPZAHnSakY0p7E.T0IquXaj9/"; ## SECRET-DATA
+            }
+        }
+        user sduser {
+            uid 2009;
+            class super-user;
+            authentication {
+                encrypted-password "$6$OWRCq28x.mEpmGpg$fPniqNL5PY/RD17iQFwDqDWXvt1mz6v1Ed4pXi3b0XxgF.xrUneyWZiZbRht8YfBn0mkRl9zZYV.H0ywSvPQ61"; ## SECRET-DATA
+            }
+        }
+    }
+    services {
+        ssh {
+            root-login allow;
+            protocol-version v2;
+            max-sessions-per-connection 64;
+        }
+        xnm-clear-text;
+        netconf {
+            ssh;
+        }
+        dhcp-local-server {
+            group jdhcp-group {
+                interface xe-1/1/1.0;
+            }
+        }
+        web-management {
+            https {
+                system-generated-certificate;
+                interface fxp0.0;
+            }
+            limits {
+                debug-level 9;
+            }
+        }
+    }
+    time-zone UTC;
+    management-instance;
+    authentication-order password;
+    name-server {
+        inactive: 8.8.8.8 routing-instance mgmt_junos;
+        inactive: 8.8.4.4 routing-instance mgmt_junos;
+        10.155.191.252 routing-instance mgmt_junos;
+    }
+    syslog {
+        user * {
+            any emergency;
+        }
+        host 10.6.1.247 {
+            any any;
+            source-address 172.19.100.250;
+            routing-instance mgmt_junos;
+        }
+        file default-log-messages {
+            any info;
+            match "(requested 'commit' operation)|(requested 'commit synchronize' operation)|(copying configuration to juniper.save)|(commit complete)|ifAdminStatus|(FRU power)|(FRU removal)|(FRU insertion)|(link UP)|transitioned|Transferred|transfer-file|(license add)|(license delete)|(package -X update)|(package -X delete)|(FRU Online)|(FRU Offline)|(plugged in)|(unplugged)|GRES";
+            structured-data;
+        }
+        file interactive-commands {
+            interactive-commands any;
+        }
+        file messages {
+            any any;
+            authorization info;
+        }
+    }
+    max-configurations-on-flash 49;
+    license {
+        autoupdate {
+            url https://ae1.juniper.net/junos/key_retrieval;
+        }
+    }
+    ntp {
+        server 1.1.1.1 version 1 routing-instance mgmt_junos;
+        server 1.4.5.5 routing-instance mgmt_junos;
+    }
+    security-profile {
+        lssys_profile;
+    }
+}
+services {
+    rpm;
+    application-identification;
+    proxy {
+        profile profile1 {
+            protocol {
+                http {
+                    host 172.19.101.1;
+                }
+            }
+        }
+    }
+    security-intelligence {
+        url https://172.19.101.13:444/api/v1/manifest.xml;
+        authentication {
+            auth-token RYBQB024K97BZNM0RO9TFDJ6RM5K5KR6;
+        }
+    }
+}
+security {
+    log {
+        mode stream;
+        format sd-syslog;
+        report;
+        source-address 172.19.100.250;
+        stream stream1 {
+            host {
+                10.6.1.247;
+            }
+        }
+        stream SDI {
+            severity alert;
+            format sd-syslog;
+            host {
+                10.6.1.247;
+                port 514;
+            }
+        }
+    }
+    pki {
+        ca-profile sd_cloud_ca {
+            ca-identity sd_cloud_ca;
+        }
+        ca-profile-group SDonCloud {
+            cert-base-count 135;
+        }
+    }
+    idp {
+        custom-attack custom_ips_sig {
+            severity info;
+            time-binding {
+                scope source;
+            }
+            attack-type {
+                signature {
+                    protocol-binding {
+                        ip {
+                            protocol-number 139;
+                        }
+                    }
+                    context http-get-url;
+                    pattern command;
+                    regexp "[put]";
+                    direction client-to-server;
+                }
+            }
+        }
+    }
+    address-book {
+        global {
+            address green_vn2 10.13.2.0/24;
+            address blue 10.12.0.0/16;
+            address green 10.13.0.0/16;
+            address google-dns 8.8.8.8/32;
+            address blueSecLinux 10.12.1.11/32;
+            address greenSecLinux 10.13.2.11/32;
+        }
+    }
+    utm {
+        default-configuration {
+            anti-virus {
+                type avira-engine;
+                scan-options {
+                    no-pre-detection;
+                    uri-check;
+                }
+                avira-engine {
+                    apply-groups anti_virus_pattern;
+                }
+            }
+            web-filtering {
+                type web-filtering-none;
+            }
+            anti-spam {
+                type anti-spam-none;
+                sbl {
+                    no-sbl-default-server;
+                }
+            }
+            content-filtering {
+                type content-filtering-none;
+                notification-options;
+            }
+        }
+        feature-profile {
+            anti-virus {
+                profile AV_Avira {
+                    fallback-options {
+                        default block;
+                        content-size block;
+                        engine-not-ready block;
+                        timeout block;
+                        out-of-resources block;
+                        too-many-requests block;
+                        decompress-err block;
+                    }
+                    notification-options {
+                        virus-detection {
+                            type message;
+                            notify-mail-sender;
+                            custom-message "There is a virus dected.";
+                            custom-message-subject "Virus Notification";
+                        }
+                        fallback-block {
+                            no-notify-mail-sender;
+                        }
+                        fallback-non-block {
+                            no-notify-mail-recipient;
+                        }
+                    }
+                }
+            }
+        }
+        utm-policy UTM_Policy_forAV {
+            anti-virus {
+                ftp {
+                    upload-profile AV_Avira;
+                    download-profile AV_Avira;
+                }
+            }
+        }
+    }
+    flow {
+        traceoptions {
+            file flow;
+            flag basic-datapath;
+            inactive: packet-filter 1 {
+                source-prefix 10.13.0.0/16;
+                destination-prefix 10.12.0.0/16;
+            }
+        }
+    }
+    screen {
+        ids-option untrust-screen {
+            ip {
+                source-route-option;
+                tear-drop;
+            }
+            tcp {
+                syn-flood {
+                    alarm-threshold 1024;
+                    attack-threshold 200;
+                    source-threshold 1024;
+                    destination-threshold 2048;
+                    queue-size 2000; ## Warning: 'queue-size' is deprecated
+                    timeout 20;
+                }
+                land;
+            }
+        }
+    }
+    nat {
+        source {
+            rule-set trust-to-untrust {
+                from zone trust;
+                to zone untrust;
+            }
+        }
+    }
+    policies {
+        global {
+            policy greenSecLinux-to-google-dns {
+                match {
+                    source-address greenSecLinux;
+                    destination-address google-dns;
+                    application any;
+                    source-l3vpn-vrf-group DC;
+                    destination-l3vpn-vrf-group DC;
+                }
+                then {
+                    deny;
+                    log {
+                        session-init;
+                        session-close;
+                    }
+                }
+            }
+            policy greenSecLinux-to-blueSecLinux {
+                match {
+                    source-address greenSecLinux;
+                    destination-address blueSecLinux;
+                    application junos-icmp-all;
+                }
+                then {
+                    permit;
+                    log {
+                        session-init;
+                        session-close;
+                    }
+                }
+            }
+            policy greenSecLinux-to-any {
+                match {
+                    source-address greenSecLinux;
+                    destination-address any;
+                    application any;
+                    source-l3vpn-vrf-group DC;
+                    destination-l3vpn-vrf-group DC;
+                }
+                then {
+                    permit;
+                    log {
+                        session-init;
+                        session-close;
+                    }
+                }
+            }
+            policy ssh-to-greenSecLinux {
+                match {
+                    source-address any;
+                    destination-address greenSecLinux;
+                    application junos-ssh;
+                }
+                then {
+                    permit;
+                    log {
+                        session-init;
+                        session-close;
+                    }
+                }
+            }
+        }
+        default-policy {
+            deny-all;
+        }
+        pre-id-default-policy {
+            then {
+                log {
+                    session-close;
+                }
+            }
+        }
+    }
+    zones {
+        security-zone trust {
+            host-inbound-traffic {
+                system-services {
+                    all;
+                }
+                protocols {
+                    all;
+                }
+            }
+            interfaces {
+                xe-1/1/1.0;
+                xe-1/1/2.0;
+                xe-1/1/3.0;
+            }
+        }
+        security-zone untrust {
+            screen untrust-screen;
+            interfaces {
+                xe-1/1/0.0 {
+                    host-inbound-traffic {
+                        system-services {
+                            dhcp;
+                            tftp;
+                        }
+                    }
+                }
+            }
+        }
+        security-zone DC {
+            host-inbound-traffic {
+                system-services {
+                    all;
+                }
+                protocols {
+                    all;
+                }
+            }
+            interfaces {
+                xe-1/1/4.0;
+                xe-1/1/5.0;
+                lo0.0;
+            }
+        }
+    }
+    l3vpn {
+        vrf-group DC {
+            vrf [ GREEN BLUE VRF-A VRF-B ];
+        }
+    }
+}
+interfaces {
+    xe-0/0/0 {
+        description "Adding interface";
+        vlan-tagging;
+    }
+    xe-0/0/1 {
+        description "Adding interface";
+    }
+    xe-0/0/2 {
+        unit 0 {
+            family inet;
+        }
+    }
+    xe-0/0/3 {
+        unit 0 {
+            family inet;
+        }
+    }
+    xe-1/1/0 {
+        enable;
+        unit 0 {
+            family inet {
+                dhcp;
+            }
+        }
+    }
+    xe-1/1/1 {
+        unit 0 {
+            family inet;
+        }
+    }
+    xe-1/1/2 {
+        unit 0 {
+            family inet {
+                address 192.168.3.1/24;
+            }
+        }
+    }
+    xe-1/1/3 {
+        unit 0 {
+            family inet {
+                address 192.168.4.1/24;
+            }
+        }
+    }
+    xe-1/1/4 {
+        description must-pswitch-spine1;
+        mtu 9100;
+        unit 0 {
+            family inet {
+                address 10.200.0.21/31;
+            }
+        }
+    }
+    xe-1/1/5 {
+        description must-pswitch-spine2;
+        mtu 9100;
+        unit 0 {
+            family inet {
+                address 10.200.0.23/31;
+            }
+        }
+    }
+    xe-1/1/6 {
+        description "Adding interface";
+    }
+    xe-1/1/7 {
+        description "Adding interface";
+    }
+    fxp0 {
+        unit 0 {
+            family inet {
+                address 172.19.100.250/24;
+            }
+        }
+    }
+    lo0 {
+        unit 0 {
+            family inet {
+                address 10.99.0.1/32;
+            }
+        }
+        unit 3 {
+            family inet;
+        }
+        unit 4 {
+            family inet;
+        }
+    }
+}
+snmp {
+    trap-group space {
+        targets {
+            10.6.1.246;
+        }
+    }
+}
+policy-options {
+    policy-statement vrf-export-to-BLUE {
+        term 1 {
+            then {
+                community add BLUE;
+                accept;
+            }
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-export-to-GREEN {
+        term 1 {
+            then {
+                community add GREEN;
+                accept;
+            }
+        }
+        inactive: term 2 {
+            from community BLUE;
+            then accept;
+        }
+        term 100 {
+            then {
+                inactive: reject;
+            }
+        }
+    }
+    policy-statement vrf-export-to-VRF-A {
+        term 1 {
+            then {
+                community add VRF-A;
+                accept;
+            }
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-export-to-VRF-B {
+        term 1 {
+            then {
+                community add VRF-B;
+                accept;
+            }
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-import-to-BLUE {
+        term 1 {
+            from community BLUE;
+            then accept;
+        }
+        term 2 {
+            from {
+                community GREEN;
+                route-filter 10.13.0.0/16 orlonger;
+            }
+            then accept;
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-import-to-GREEN {
+        term 1 {
+            from community GREEN;
+            then accept;
+        }
+        term 2 {
+            from {
+                family evpn;
+                community BLUE;
+                route-filter 0.0.0.0/0 exact;
+                route-filter 10.12.1.0/24 orlonger;
+            }
+            then {
+                community add GREEN;
+                accept;
+            }
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-import-to-VRF-A {
+        term 1 {
+            from community VRF-A;
+            then accept;
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-import-to-VRF-B {
+        term 1 {
+            from community VRF-B;
+            then accept;
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    community BLUE members target:20002:1;
+    community GREEN members target:20003:1;
+    community VRF-A members target:200000L:1;
+    community VRF-B members target:300000L:1;
+}
+routing-instances {
+    BLUE {
+        instance-type vrf;
+        routing-options {
+            multipath;
+            auto-export;
+        }
+        protocols {
+            evpn {
+                interconnect {
+                    vrf-target target:20002:1;
+                    route-distinguisher 10.99.0.1:3;
+                }
+                ip-prefix-routes {
+                    advertise direct-nexthop;
+                    encapsulation vxlan;
+                    vni 20002;
+                }
+            }
+        }
+        interface lo0.3;
+        route-distinguisher 10.99.0.1:3;
+        vrf-import vrf-import-to-BLUE;
+        vrf-export vrf-export-to-BLUE;
+    }
+    GREEN {
+        instance-type vrf;
+        routing-options {
+            multipath;
+            auto-export;
+        }
+        protocols {
+            evpn {
+                interconnect {
+                    vrf-target target:20003:1;
+                    route-distinguisher 10.99.0.1:4;
+                }
+                ip-prefix-routes {
+                    advertise direct-nexthop;
+                    encapsulation vxlan;
+                    vni 20003;
+                }
+            }
+        }
+        interface lo0.4;
+        route-distinguisher 10.99.0.1:4;
+        vrf-import vrf-import-to-GREEN;
+        vrf-export vrf-export-to-GREEN;
+    }
+    VRF-A {
+        instance-type vrf;
+        route-distinguisher 10.99.0.1:15;
+        vrf-target target:200000L:1;
+    }
+    VRF-B {
+        instance-type vrf;
+        route-distinguisher 10.99.0.1:21;
+        vrf-import vrf-import-to-VRF-B;
+        vrf-export vrf-export-to-VRF-B;
+    }
+    mgmt_junos {
+        routing-options {
+            static {
+                route 0.0.0.0/0 next-hop 172.19.100.1;
+            }
+        }
+    }
+}
+protocols {
+    bgp {
+        group underlay {
+            type external;
+            multihop;
+            advertise-peer-as;
+            multipath {
+                multiple-as;
+            }
+            neighbor 192.168.255.0 {
+                local-address 10.99.0.1;
+                family inet {
+                    unicast;
+                }
+                family evpn {
+                    signaling;
+                }
+                peer-as 64512;
+                local-as 65110;
+            }
+            neighbor 192.168.255.1 {
+                local-address 10.99.0.1;
+                family inet {
+                    unicast;
+                }
+                family evpn {
+                    signaling;
+                }
+                peer-as 64513;
+                local-as 65110;
+            }
+            vpn-apply-export;
+        }
+        inactive: traceoptions {
+            file bgp-trace;
+            flag route;
+            flag update;
+        }
+    }
+    lldp {
+        interface all;
+    }
+}
+routing-options {
+    autonomous-system 65110;
+    static {
+        route 10.6.1.0/24 next-table mgmt_junos.inet.0;
+        route 192.168.255.0/32 next-hop 10.200.0.20;
+        route 192.168.255.1/32 next-hop 10.200.0.22;
+    }
+    inactive: rib-groups {
+        BLUE-to-GREEN {
+            import-rib [ BLUE.inet.0 GREEN.inet.0 ];
+        }
+    }
+}
+
+[edit]

@@ -1,11 +1,13 @@
 protocols {
-    bgp {
-{%- for bgp in srx_bgp %} 
-        group underlay_{{ bgp['spine'] }} {
+    bgp { 
+        group underlay {
             type external;
             multihop;
             advertise-peer-as;
-            multipath;
+            multipath {
+                multiple-as;
+            }
+{% for bgp in srx_bgp %}
             neighbor {{bgp['source_ip']}} {
                 local-address {{bgp['dest_ip']}};
                 family inet {
@@ -17,8 +19,9 @@ protocols {
                 peer-as {{bgp['source_asn']}};
                 local-as {{bgp['dest_asn']}};
             }
-        }
 {% endfor %}
+            vpn-apply-export;
+        }
     }
     lldp {
         interface all;
