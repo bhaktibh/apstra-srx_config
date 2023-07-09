@@ -162,28 +162,32 @@ if __name__ == "__main__":
                 spine_node.append(node[1])
                 srx_count = len(srx_bgp)
                 srx_lpbck_addr = [srx_bgp[i]['dest_ip'] for i in range(srx_count)]
-        #removing duplicates 
+                print ('srx_lpbck_addr are ', srx_lpbck_addr)
+                print ('srx_bgp is', srx_bgp)
+        #removing duplicates, we need to how many SRXs are there to write files, hence need srx_lpbck_addr 
         srx_lpbck_addr = set(srx_lpbck_addr)
         srx_lpbck_addr = list(srx_lpbck_addr)
-        #create protocols template from protocols jinja
-        protocol = Environment(loader=FileSystemLoader(THIS_DIR),
-                      trim_blocks=True, lstrip_blocks=True)
-        bgp_config = protocol.get_template('protocols.j2').render(
-        #                 spine = node[1], srx_bgp = srx_bgp
-                         srx_bgp = srx_bgp
-        )
-        #Now write file for base_srx_config
-        for i in range(len(srx_lpbck_addr)):
-            if os.path.isfile("base_srx_config_" + srx_lpbck_addr[i] + ".txt"):
-                srx_filenm = open("base_srx_config_" + srx_lpbck_addr[i] + ".txt","a")
-            else:
-                print ("Adding protocols bgp to base_srx_config_"+ srx_lpbck_addr[i]+ ".txt")
-                srx_filenm = open("base_srx_config_" + srx_lpbck_addr[i] + ".txt","w")
-            try:
-                srx_filenm.write(bgp_config)
-                srx_filenm.write('\n')
-            except Exception as e:
-                sys.exit("File " + "base_srx_config_" + srx_lpbck_addr[i] + ".txt write error. In case if file is open then close file.")
+        for b in range(len(srx_bgp)):
+            #create protocols template from protocols jinja
+            protocol = Environment(loader=FileSystemLoader(THIS_DIR),
+                          trim_blocks=True, lstrip_blocks=True)
+            bgp_config = protocol.get_template('protocols.j2').render(
+            #                 spine = node[1], srx_bgp = srx_bgp
+                             srx_bgp = srx_bgp[b]
+            )
+            #Now write file for base_srx_config
+            for i in range(len(srx_lpbck_addr)):
+                if srx_bgp[b]['dest_ip'] == srx_lpbck_addr[i]:
+                    if os.path.isfile("base_srx_config_" + srx_lpbck_addr[i] + ".txt"):
+                       srx_filenm = open("base_srx_config_" + srx_lpbck_addr[i] + ".txt","a")
+                    else:
+                        print ("Adding protocols bgp to base_srx_config_"+ srx_lpbck_addr[i]+ ".txt")
+                        srx_filenm = open("base_srx_config_" + srx_lpbck_addr[i] + ".txt","w")
+                    try:
+                        srx_filenm.write(bgp_config)
+                        srx_filenm.write('\n')
+                    except Exception as e:
+                        sys.exit("File " + "base_srx_config_" + srx_lpbck_addr[i] + ".txt write error. In case if file is open then close file.")
         prev_spine = node[2]
         node=''
         for node in bp_nodes:

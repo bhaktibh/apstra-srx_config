@@ -7,19 +7,17 @@ protocols {
             multipath {
                 multiple-as;
             }
-{% for bgp in srx_bgp %}
-            neighbor {{bgp['source_ip']}} {
-                local-address {{bgp['dest_ip']}};
+            neighbor {{srx_bgp['source_ip']}} {
+                local-address {{srx_bgp['dest_ip']}};
                 family inet {
                     unicast;
                 }
                 family evpn {
                     signaling;
                 }
-                peer-as {{bgp['source_asn']}};
-                local-as {{bgp['dest_asn']}};
+                peer-as {{srx_bgp['source_asn']}};
+                local-as {{srx_bgp['dest_asn']}};
             }
-{% endfor %}
             vpn-apply-export;
         }
     }
