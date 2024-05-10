@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import requests, os
+import inquirer
 import json, ipaddress
 import re,sys
 import socket,pwinput
@@ -24,12 +25,22 @@ def apstra_auth_token(aos_url, aos_user, aos_password):
         
     return authtoken
 
-def get_blueprint_id(aos_url, token):
+def get_blueprints(aos_url, token):
     headers={'AuthToken':token}
     
     #Step 1 - Pull all defined blueprints
     blueprintlist=requests.get(f'{aos_url}/api/blueprints',headers=headers,verify=False)
+    #get_user_blueprint_id()
+    bpname=[]
+    for blueprint in blueprintlist.json()['items']:
+            bpname.append({'label':blueprint['label'],'id':blueprint['id']})
+    return bpname
+
+def get_user_blueprint_id():
     bpid = ''
+    #Step 1 - Pull all defined blueprints
+    headers={'AuthToken':token}
+    blueprintlist=requests.get(f'{aos_url}/api/blueprints',headers=headers,verify=False)
     for blueprint in blueprintlist.json()['items']:
         if blueprint['label'] == aos_blueprint:
             bpid=blueprint['id']
@@ -62,6 +73,69 @@ def get_device_context(aos_url,token,bp_id,node_id):
     
     device_context = resp.json()
     return device_context
+
+#def build_srx_conf(srx_bgp,srx_lpbck_addr,):
+#    spine_srx_data = []
+#    if srx_bgp != [] :
+#        for i in range(len(srx_lpbck_addr)):
+#            spine_srx_data = []
+#            for bgp_data in srx_bgp:
+#                if srx_lpbck_addr[i] == bgp_data['dest_ip']:
+#                #srx_data = {'spine_loopback': bgp_data['source_ip'], 'srx_loopback': bgp_data['dest_ip'], 'peer_as' : bgp_data['source_asn'], 'local_as' : bgp_data['dest_asn']}
+#                    srx_data = {'source_ip': bgp_data['source_ip'], 'dest_ip': bgp_data['dest_ip'], 'source_asn' : #bgp_data['source_asn'], 'dest_asn' : bgp_data['dest_asn']}
+#                    spine_srx_data.append(srx_data)
+#            bgp_config=render_bgp_protocol(spine_srx_data)
+#            #render routing instance and policy options (rtg inst) config and combine the two
+#            srx_config=render_rtginst_policyop(bp_nodes)
+#            
+#    return bgp_config
+
+def render_bgp_protocol(spine_srx_data):
+    #create protocols template from protocols jinja
+    protocol = Environment(loader=FileSystemLoader(THIS_DIR),
+                  trim_blocks=True, lstrip_blocks=True)
+
+    bgp_config = protocol.get_template('protocols.j2').render(
+                     srx_bgp = spine_srx_data
+    )
+    return bgp_config
+
+def render_rtginst_policyop(bp_nodes,srx_ip):
+    for node in bp_nodes:
+        if node[2] == 'leaf':
+            leaf_node_found = True
+            break
+    device_context = get_device_context(aos_url,token,bp_id,node[0])
+    context=[]
+    context=json.loads(device_context['context'])
+    rt_instances= context['security_zones']
+    protocol = Environment(loader=FileSystemLoader(THIS_DIR),
+                  trim_blocks=True, lstrip_blocks=True)
+    rt_inst_config = protocol.get_template('routing_instances.j2').render(
+            local_addr = srx_ip, rt_instances = rt_instances
+        )
+    policy_op_config = protocol.get_template('policy-options.j2').render(
+            rt_instances = rt_instances
+        )
+    rtinst_policy_config = rt_inst_config + '\n' + policy_op_config
+    return rtinst_policy_config
+
+def write_srx_file(srx_ip,bgp_config,srx_config):
+    #Now write file for base_srx_config
+    #for i in range(len(srx_lpbck_addr)):
+    if os.path.isfile("base_srx_config_" + srx_ip + ".txt"):
+        os.remove("base_srx_config_" + srx_ip + ".txt")
+        #srx_filenm = open("base_srx_config_" + srx_ip + ".txt","a")
+    else:
+        print ("Adding protocols bgp, routing-inst and Policy options to base_srx_config_"+ srx_lpbck_addr[i]+ ".txt")
+        srx_filenm = open("base_srx_config_" + srx_ip + ".txt","w")
+        try:
+            srx_filenm.write(bgp_config)
+            srx_filenm.write('\n')
+            srx_filenm.write(srx_config)
+            srx_filenm.write('\n')
+        except Exception as e:
+            sys.exit("File " + "base_srx_config_" + srx_lpbck_addr[i] + ".txt write error. In case if file is open then close file.")
 
 if __name__ == "__main__":
     # Validate Input
@@ -96,17 +170,6 @@ if __name__ == "__main__":
     aos_user = input("Enter apstra username. if admin then press Enter: ")
     print("Enter apstra password")
     aos_password=pwinput.pwinput()
-        
-    while True:
-        aos_blueprint = input("Enter Blueprint Name as shown in Apstra: ")
-        try:
-            if aos_blueprint == "":
-                raise ValueError
-        except ValueError:
-            print("Enter valid blueprint from Apstra")
-            continue
-        else:
-            break
     
     # Aos url
     if aos_port != "":
@@ -117,11 +180,29 @@ if __name__ == "__main__":
     
     if aos_user == "":
         aos_user = "admin"
-        
     # Next get auth token by logging into Apstra
     token = apstra_auth_token(aos_url, aos_user, aos_password)
-    # Next get blueprints and parse to get blueprint ID
-    bp_id = get_blueprint_id(aos_url, token)
+    # Get all blueprint list and inquire with user to get input
+    #aos_blueprintlist=objDict()
+    blueprintlist=get_blueprints(aos_url, token)
+    print("Blueprint list ",blueprintlist )
+        
+    #while True:
+    #    aos_blueprint = input("Enter Blueprint Name as shown in Apstra: ")
+    questions = [
+      inquirer.List('Blueprint Names',
+                    message="Select the blueprint that is configured for CSEC",
+                    choices=[blueprintlist[i]['label'] for i in range(len(blueprintlist))],
+                ),
+    ]
+    answers = inquirer.prompt(questions)
+    print ("Answer is ", answers)
+    print ("Answer is ", answers['Blueprint Names'])
+    aos_blueprint = answers['Blueprint Names']
+    ## Next get auth token by logging into Apstra
+    #token = apstra_auth_token(aos_url, aos_user, aos_password)
+    # Next get get blueprint ID
+    bp_id = get_user_blueprint_id()
     print ("Blueprint found.")
     # Next get leaf and spine nodes from Blueprint
     bp_nodes = get_bp_nodes(aos_url, token,bp_id)
@@ -145,6 +226,7 @@ if __name__ == "__main__":
                 pass
     srx_count = 0
     spine_node = []
+    spine_srx_bgp = []
     if bp_nodes != []:
         for node in bp_nodes:
             prev_spine=''
@@ -161,70 +243,32 @@ if __name__ == "__main__":
                         srx_bgp.append(bgp)
                 spine_node.append(node[1])
                 srx_count = len(srx_bgp)
-                srx_lpbck_addr = [srx_bgp[i]['dest_ip'] for i in range(srx_count)]
-                print ('srx_lpbck_addr are ', srx_lpbck_addr)
-                print ('srx_bgp is', srx_bgp)
-        #removing duplicates, we need to how many SRXs are there to write files, hence need srx_lpbck_addr 
-        srx_lpbck_addr = set(srx_lpbck_addr)
-        srx_lpbck_addr = list(srx_lpbck_addr)
-        for b in range(len(srx_bgp)):
-            #create protocols template from protocols jinja
-            protocol = Environment(loader=FileSystemLoader(THIS_DIR),
-                          trim_blocks=True, lstrip_blocks=True)
-            bgp_config = protocol.get_template('protocols.j2').render(
-            #                 spine = node[1], srx_bgp = srx_bgp
-                             srx_bgp = srx_bgp[b]
-            )
-            #Now write file for base_srx_config
-            for i in range(len(srx_lpbck_addr)):
-                if srx_bgp[b]['dest_ip'] == srx_lpbck_addr[i]:
-                    if os.path.isfile("base_srx_config_" + srx_lpbck_addr[i] + ".txt"):
-                       srx_filenm = open("base_srx_config_" + srx_lpbck_addr[i] + ".txt","a")
-                    else:
-                        print ("Adding protocols bgp to base_srx_config_"+ srx_lpbck_addr[i]+ ".txt")
-                        srx_filenm = open("base_srx_config_" + srx_lpbck_addr[i] + ".txt","w")
-                    try:
-                        srx_filenm.write(bgp_config)
-                        srx_filenm.write('\n')
-                    except Exception as e:
-                        sys.exit("File " + "base_srx_config_" + srx_lpbck_addr[i] + ".txt write error. In case if file is open then close file.")
-        prev_spine = node[2]
-        node=''
-        for node in bp_nodes:
-            if node[2] == 'leaf':
-                leaf_node_found = True
-                break
 
-        device_context = get_device_context(aos_url,token,bp_id,node[0])
-        context=[]
-        context=json.loads(device_context['context'])
-        rt_instances= context['security_zones']
-        for r in range (len(srx_lpbck_addr)):
-            rt_inst_config = protocol.get_template('routing_instances.j2').render(
-                      local_addr = srx_lpbck_addr[r], rt_instances = rt_instances
-            )
-            #print (output)
-            policy_op_config = protocol.get_template('policy-options.j2').render(
-                      rt_instances = rt_instances
-            )
-            #lldp_config = protocol.get_template('protocols_lldp.j2').render()
-            #print (output)
-            print ("Adding protocols lldp, routing_instances, policy_options to base_srx_config_"+ srx_bgp[i]['dest_ip']+ ".txt")
-            srx_filenm = open("base_srx_config_" + srx_lpbck_addr[r] + ".txt","a")
-            try:
-                #srx_filenm.write('\n')
-                #srx_filenm.write(lldp_config)
-                #srx_filenm.write('\n')
-                srx_filenm.write(rt_inst_config)
-                srx_filenm.write('\n')
-                srx_filenm.write(policy_op_config)
-                srx_filenm.close()
-            except Exception as e:
-                sys.exit("File " + "base_srx_config_" + srx_lpbck_addr[r] + ".txt write error. In case if file is open then close file.")
-    #Lets check if the file got generated again and print message
-    fileList = glob.glob('base_srx_config_*.txt')
-    if fileList != []:
-        for filePath in fileList:
-            print ('SRX config file generated for', filePath)
-    else:
-        print ('SRX config file not generated at all! Something went wrong..:(')
+        #print ('srx_lpbck_addr before ', srx_lpbck_addr)
+        [srx_lpbck_addr.append(item['dest_ip']) for item in srx_bgp if item['dest_ip'] not in srx_lpbck_addr]
+        print ('srx_lpbck_addr are ', srx_lpbck_addr)
+        print ('srx_bgp is', srx_bgp)
+
+        #Build config for each srx towards each spine, first sort and render bgp config and routing inst
+        spine_srx_data = []
+        if srx_bgp != [] :
+            for i in range(len(srx_lpbck_addr)):
+                spine_srx_data = []
+                for bgp_data in srx_bgp:
+                    if srx_lpbck_addr[i] == bgp_data['dest_ip']:
+                    #srx_data = {'spine_loopback': bgp_data['source_ip'], 'srx_loopback': bgp_data['dest_ip'], 'peer_as' : bgp_data['source_asn'], 'local_as' : bgp_data['dest_asn']}
+                        srx_data = {'source_ip': bgp_data['source_ip'], 'dest_ip': bgp_data['dest_ip'], 'source_asn' : bgp_data['source_asn'], 'dest_asn' : bgp_data['dest_asn']}
+                        spine_srx_data.append(srx_data)
+                bgp_config=render_bgp_protocol(spine_srx_data)
+                #render routing instance and policy options (rtg inst) config and combine the two
+                srx_ip=srx_lpbck_addr[i]
+                srx_config=render_rtginst_policyop(bp_nodes,srx_ip)
+                write_srx_file(srx_ip,bgp_config,srx_config)
+
+        #Lets check if the file got generated again and print message
+        fileList = glob.glob('base_srx_config_*.txt')
+        if fileList != []:
+           for filePath in fileList:
+               print ('SRX config file generated for', filePath)
+        else:
+            print ('SRX config file not generated at all! Something went wrong..:(')

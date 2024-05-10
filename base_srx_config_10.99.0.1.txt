@@ -1,0 +1,357 @@
+protocols {
+    bgp { 
+        group underlay {
+            type external;
+            multihop;
+            advertise-peer-as;
+            multipath {
+                multiple-as;
+            }
+            neighbor 192.168.255.0 {
+                local-address 10.99.0.1;
+                family inet {
+                    unicast;
+                }
+                family evpn {
+                    signaling;
+                }
+                peer-as 64512;
+                local-as 65110;
+            }
+            neighbor 192.168.255.1 {
+                local-address 10.99.0.1;
+                family inet {
+                    unicast;
+                }
+                family evpn {
+                    signaling;
+                }
+                peer-as 64513;
+                local-as 65110;
+            }
+            vpn-apply-export;
+        }
+    }
+    lldp {
+        interface all;
+    }
+}
+routing-instances {
+    NSX-T {
+        instance-type vrf;
+        routing-options {
+            multipath;
+            auto-export;
+        }
+        protocols {
+            evpn {
+                interconnect {
+                    vrf-target target:20000:1;
+                    route-distinguisher 10.99.0.1:9;
+                }
+                ip-prefix-routes {
+                    advertise direct-nexthop;
+                    encapsulation vxlan;
+                    vni 20000;
+                }
+            }
+        }
+        interface lo0.9;
+        route-distinguisher 10.99.0.1:9;
+        vrf-import vrf-import-to-NSX-T;
+        vrf-export vrf-export-to-NSX-T;
+    }
+    NSX-T_VRF_A {
+        instance-type vrf;
+        routing-options {
+            multipath;
+            auto-export;
+        }
+        protocols {
+            evpn {
+                interconnect {
+                    vrf-target target:200000:1;
+                    route-distinguisher 10.99.0.1:15;
+                }
+                ip-prefix-routes {
+                    advertise direct-nexthop;
+                    encapsulation vxlan;
+                    vni 200000;
+                }
+            }
+        }
+        interface lo0.15;
+        route-distinguisher 10.99.0.1:15;
+        vrf-import vrf-import-to-NSX-T_VRF_A;
+        vrf-export vrf-export-to-NSX-T_VRF_A;
+    }
+    NSX-T_VRF_B {
+        instance-type vrf;
+        routing-options {
+            multipath;
+            auto-export;
+        }
+        protocols {
+            evpn {
+                interconnect {
+                    vrf-target target:300000:1;
+                    route-distinguisher 10.99.0.1:21;
+                }
+                ip-prefix-routes {
+                    advertise direct-nexthop;
+                    encapsulation vxlan;
+                    vni 300000;
+                }
+            }
+        }
+        interface lo0.21;
+        route-distinguisher 10.99.0.1:21;
+        vrf-import vrf-import-to-NSX-T_VRF_B;
+        vrf-export vrf-export-to-NSX-T_VRF_B;
+    }
+    blue {
+        instance-type vrf;
+        routing-options {
+            multipath;
+            auto-export;
+        }
+        protocols {
+            evpn {
+                interconnect {
+                    vrf-target target:20002:1;
+                    route-distinguisher 10.99.0.1:3;
+                }
+                ip-prefix-routes {
+                    advertise direct-nexthop;
+                    encapsulation vxlan;
+                    vni 20002;
+                }
+            }
+        }
+        interface lo0.3;
+        route-distinguisher 10.99.0.1:3;
+        vrf-import vrf-import-to-blue;
+        vrf-export vrf-export-to-blue;
+    }
+    green {
+        instance-type vrf;
+        routing-options {
+            multipath;
+            auto-export;
+        }
+        protocols {
+            evpn {
+                interconnect {
+                    vrf-target target:20003:1;
+                    route-distinguisher 10.99.0.1:4;
+                }
+                ip-prefix-routes {
+                    advertise direct-nexthop;
+                    encapsulation vxlan;
+                    vni 20003;
+                }
+            }
+        }
+        interface lo0.4;
+        route-distinguisher 10.99.0.1:4;
+        vrf-import vrf-import-to-green;
+        vrf-export vrf-export-to-green;
+    }
+    netrounds {
+        instance-type vrf;
+        routing-options {
+            multipath;
+            auto-export;
+        }
+        protocols {
+            evpn {
+                interconnect {
+                    vrf-target target:20004:1;
+                    route-distinguisher 10.99.0.1:27;
+                }
+                ip-prefix-routes {
+                    advertise direct-nexthop;
+                    encapsulation vxlan;
+                    vni 20004;
+                }
+            }
+        }
+        interface lo0.27;
+        route-distinguisher 10.99.0.1:27;
+        vrf-import vrf-import-to-netrounds;
+        vrf-export vrf-export-to-netrounds;
+    }
+    red {
+        instance-type vrf;
+        routing-options {
+            multipath;
+            auto-export;
+        }
+        protocols {
+            evpn {
+                interconnect {
+                    vrf-target target:20001:1;
+                    route-distinguisher 10.99.0.1:2;
+                }
+                ip-prefix-routes {
+                    advertise direct-nexthop;
+                    encapsulation vxlan;
+                    vni 20001;
+                }
+            }
+        }
+        interface lo0.2;
+        route-distinguisher 10.99.0.1:2;
+        vrf-import vrf-import-to-red;
+        vrf-export vrf-export-to-red;
+    }
+}
+policy-options {
+    policy-statement vrf-export-to-NSX-T {
+        term 1 {
+            then {
+                community add NSX-T;
+                accept;
+            }
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-import-to-NSX-T {
+        term 1 {
+            from community NSX-T;
+            then accept;
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-export-to-NSX-T_VRF_A {
+        term 1 {
+            then {
+                community add NSX-T_VRF_A;
+                accept;
+            }
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-import-to-NSX-T_VRF_A {
+        term 1 {
+            from community NSX-T_VRF_A;
+            then accept;
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-export-to-NSX-T_VRF_B {
+        term 1 {
+            then {
+                community add NSX-T_VRF_B;
+                accept;
+            }
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-import-to-NSX-T_VRF_B {
+        term 1 {
+            from community NSX-T_VRF_B;
+            then accept;
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-export-to-blue {
+        term 1 {
+            then {
+                community add blue;
+                accept;
+            }
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-import-to-blue {
+        term 1 {
+            from community blue;
+            then accept;
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-export-to-green {
+        term 1 {
+            then {
+                community add green;
+                accept;
+            }
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-import-to-green {
+        term 1 {
+            from community green;
+            then accept;
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-export-to-netrounds {
+        term 1 {
+            then {
+                community add netrounds;
+                accept;
+            }
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-import-to-netrounds {
+        term 1 {
+            from community netrounds;
+            then accept;
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-export-to-red {
+        term 1 {
+            then {
+                community add red;
+                accept;
+            }
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    policy-statement vrf-import-to-red {
+        term 1 {
+            from community red;
+            then accept;
+        }
+        term 100 {
+            then reject;
+        }
+    }
+    community NSX-T members target:20000:1;
+    community NSX-T_VRF_A members target:200000L:1;
+    community NSX-T_VRF_B members target:300000L:1;
+    community blue members target:20002:1;
+    community green members target:20003:1;
+    community netrounds members target:20004:1;
+    community red members target:20001:1;
+}
