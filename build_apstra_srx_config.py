@@ -31,10 +31,10 @@ def get_blueprints(aos_url, token):
     #Step 1 - Pull all defined blueprints
     blueprintlist=requests.get(f'{aos_url}/api/blueprints',headers=headers,verify=False)
     #get_user_blueprint_id()
-    bpname=[]
+    bplist=[]
     for blueprint in blueprintlist.json()['items']:
-            bpname.append({'label':blueprint['label'],'id':blueprint['id']})
-    return bpname
+            bplist.append({'label':blueprint['label'],'id':blueprint['id']})
+    return bplist
 
 def get_user_blueprint_id():
     bpid = ''
@@ -127,7 +127,7 @@ def write_srx_file(srx_ip,bgp_config,srx_config):
         os.remove("base_srx_config_" + srx_ip + ".txt")
         #srx_filenm = open("base_srx_config_" + srx_ip + ".txt","a")
     else:
-        print ("Adding protocols bgp, routing-inst and Policy options to base_srx_config_"+ srx_lpbck_addr[i]+ ".txt")
+        print ("* * * Adding protocols bgp, routing-inst and Policy options to base_srx_config_"+ srx_lpbck_addr[i]+ ".txt * * *\n")
         srx_filenm = open("base_srx_config_" + srx_ip + ".txt","w")
         try:
             srx_filenm.write(bgp_config)
@@ -183,30 +183,34 @@ if __name__ == "__main__":
     # Next get auth token by logging into Apstra
     token = apstra_auth_token(aos_url, aos_user, aos_password)
     # Get all blueprint list and inquire with user to get input
-    #aos_blueprintlist=objDict()
     blueprintlist=get_blueprints(aos_url, token)
-    print("Blueprint list ",blueprintlist )
+    #print("Blueprint list ",blueprintlist )
         
     #while True:
     #    aos_blueprint = input("Enter Blueprint Name as shown in Apstra: ")
     questions = [
       inquirer.List('Blueprint Names',
-                    message="Select the blueprint that is configured for CSEC",
+                    message="Select the blueprint that is configured for Connected-Security",
                     choices=[blueprintlist[i]['label'] for i in range(len(blueprintlist))],
                 ),
     ]
     answers = inquirer.prompt(questions)
-    print ("Answer is ", answers)
-    print ("Answer is ", answers['Blueprint Names'])
+    #print ("Answer is ", answers)
+    print ("* * * Blueprint Selected is " + answers['Blueprint Names'] +"* * *\n")
+    bpid = [b['id'] for b in blueprintlist if b['label'] == answers['Blueprint Names']]
+    #print ("Selected Blueprint ID is ", bpid)
     aos_blueprint = answers['Blueprint Names']
-    ## Next get auth token by logging into Apstra
-    #token = apstra_auth_token(aos_url, aos_user, aos_password)
     # Next get get blueprint ID
-    bp_id = get_user_blueprint_id()
-    print ("Blueprint found.")
+    #bp_id = get_user_blueprint_id()
+    bp_id = ""
+    if bpid:
+        bp_id = bpid[0]
+    else:
+        sys.exit("Blueprint ID not found. Exiting..")
+    print ("* * * Blueprint found. Now getting Blueprint Nodes... * * *\n")
     # Next get leaf and spine nodes from Blueprint
     bp_nodes = get_bp_nodes(aos_url, token,bp_id)
-    print ("Blueprint Nodes found")
+    print ("* * * Blueprint Nodes found. Now checking for SRX configured on Blueprint... * * *\n")
     #print ('Nodes are ', bp_nodes)
     node_id=''
     
@@ -244,10 +248,16 @@ if __name__ == "__main__":
                 spine_node.append(node[1])
                 srx_count = len(srx_bgp)
 
+        #Check if SRXs are connected
+        if srx_count == 0:
+            sys.exit("No SRXs were connected to this Blueprint. Exiting..")
+        else:
+            print ("* * * SRX is connected to the Spines on Blueprint. Generating SRX config files... * * *\n")
+            
         #print ('srx_lpbck_addr before ', srx_lpbck_addr)
         [srx_lpbck_addr.append(item['dest_ip']) for item in srx_bgp if item['dest_ip'] not in srx_lpbck_addr]
-        print ('srx_lpbck_addr are ', srx_lpbck_addr)
-        print ('srx_bgp is', srx_bgp)
+        #print ('srx_lpbck_addr are ', srx_lpbck_addr)
+        #print ('srx_bgp is', srx_bgp)
 
         #Build config for each srx towards each spine, first sort and render bgp config and routing inst
         spine_srx_data = []
@@ -256,6 +266,7 @@ if __name__ == "__main__":
                 spine_srx_data = []
                 for bgp_data in srx_bgp:
                     if srx_lpbck_addr[i] == bgp_data['dest_ip']:
+                        # Could have reversed this but this works as the SRX BGP config is built
                     #srx_data = {'spine_loopback': bgp_data['source_ip'], 'srx_loopback': bgp_data['dest_ip'], 'peer_as' : bgp_data['source_asn'], 'local_as' : bgp_data['dest_asn']}
                         srx_data = {'source_ip': bgp_data['source_ip'], 'dest_ip': bgp_data['dest_ip'], 'source_asn' : bgp_data['source_asn'], 'dest_asn' : bgp_data['dest_asn']}
                         spine_srx_data.append(srx_data)
@@ -269,6 +280,6 @@ if __name__ == "__main__":
         fileList = glob.glob('base_srx_config_*.txt')
         if fileList != []:
            for filePath in fileList:
-               print ('SRX config file generated for', filePath)
+               print ('* * * SRX config file generated for', filePath)
         else:
             print ('SRX config file not generated at all! Something went wrong..:(')
